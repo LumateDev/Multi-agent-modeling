@@ -18,7 +18,7 @@ class Environment:
         return client
 
     def find_least_loaded_agent(self):
-        agent_loads = [(agent.agent_id, agent.get_agent_load()) for agent in self.agents]
+        agent_loads = [f"Агент {agent.agent_id} загружен на {agent.get_agent_load()}" for agent in self.agents]
         print(f"Текущая загрузка агентов: {agent_loads}")
         return min(self.agents, key=lambda agent: agent.get_agent_load())
 
