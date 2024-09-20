@@ -19,4 +19,4 @@ if __name__ == "__main__":
 
     print("\n" + "*" * char_count)
     print("Simulation ended")
-    print("*")
+    print("" + "*" * char_count)
