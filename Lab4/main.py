@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+
 def calculate_target_state(t, t_stop):
     mid = t_stop / 2
     return 0 if 0 <= t <= mid else 1
@@ -52,8 +53,8 @@ def simulation(t, delta_t, t_stop, tau, k, t1, environment_T2, environment_D):
         current_stability = is_converged(current_target_state, current_state)
         all_stability.append(current_stability)
 
-        # Принты для отслеживания состояния
-        # print(f"t: {t:.2f}, Target State: {current_target_state}, Current State: {current_state:.4f}, Stability: {current_stability}")
+        # Принты для отслеживания состояния print(f"t: {t:.2f}, Target State: {current_target_state}, Current State:
+        # {current_state:.4f}, Stability: {current_stability}")
 
         t += delta_t
 
