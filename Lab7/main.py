@@ -75,7 +75,7 @@ def balanced_trap_strategy(agent, env, role, partner_hand):
 
 
 # Логика игры
-def play_game(agent1_strategy, agent2_strategy):
+def game(agent1_strategy, agent2_strategy):
     env = GameEnvironment()
     agents = [
         Agent(0, agent1_strategy),  # Пара 1
@@ -120,7 +120,7 @@ for agent1_strategy in strategies:
         pair2_wins = 0
         total_games = 1000  # 1000 игр
         for _ in range(total_games):
-            result = play_game(agent1_strategy, agent2_strategy)
+            result = game(agent1_strategy, agent2_strategy)
             if result == 0:
                 pair1_wins += 1
             else:
