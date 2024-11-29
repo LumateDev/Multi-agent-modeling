@@ -131,7 +131,7 @@ for agent1_strategy in strategies:
         pair2_win_percentage = (pair2_wins / total_games) * 100
 
         print(f"Стратегия Агентов 1: {agent1_strategy.__name__}, Стратегия Агентов 2: {agent2_strategy.__name__}")
-        print(f"Пара 1 выиграла {pair1_win_percentage:.2f}% раз.")
-        print(f"Пара 2 выиграла {pair2_win_percentage:.2f}% раз.")
+        print(f"Пара 1 выиграла {pair1_win_percentage:.2f}%.")
+        print(f"Пара 2 выиграла {pair2_win_percentage:.2f}%.")
         print("-" * 50)
 
