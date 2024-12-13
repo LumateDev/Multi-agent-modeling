@@ -5,13 +5,46 @@ import pandas as pd
 # Константы и начальные настройки
 MAX_LEVEL = 10
 INITIAL_BALANCE = 100  # Уменьшен для восприятия
-EXPERIENCE_THRESHOLD = 200  # Уменьшен для более быстрого роста уровней
+EXPERIENCE_THRESHOLD = 5000  # Уменьшен для более быстрого роста уровней
 COLONY_COUNT = 10
 SIMULATION_TIME = 1000
 ITERATIONS_PER_CYCLE = 10
 AUCTION_INTERVAL = 5
 EVENT_INTERVAL = 7
 LOG_FILE = "simulation_log.txt"
+
+class Effect:
+    def __init__(self, effect_type, value, duration, name):
+        self.effect_type = effect_type  # Тип эффекта: 'income', 'expenses', 'balance'
+        self.value = value  # Значение изменения: абсолютное или процентное
+        self.duration = duration  # Количество итераций
+        self.name = name  # Имя эффекта для логирования
+
+    def apply(self, colony, log):
+        """Применяет эффект к целевой колонии"""
+        if self.effect_type == 'income':
+            colony.income += colony.income * (self.value / 100)
+            log.append(f"{colony.name}: Доход увеличен на {self.value}%.")
+        elif self.effect_type == 'expenses':
+            colony.expenses -= colony.expenses * (self.value / 100)
+            colony.expenses = max(1, colony.expenses)  # Минимальные расходы — 1
+            log.append(f"{colony.name}: Расходы уменьшены на {self.value}%.")
+        elif self.effect_type == 'balance':
+            colony.balance += colony.balance * (self.value / 100)
+            log.append(f"{colony.name}: Баланс увеличен на {self.value}%.")
+
+    def rollback(self, colony, log):
+        """Снимает эффект с колонии"""
+        if self.effect_type == 'income':
+            colony.income -= colony.income * (self.value / 100)
+            log.append(f"{colony.name}: Эффект на доход ({self.value}%) снят.")
+        elif self.effect_type == 'expenses':
+            colony.expenses += colony.expenses * (self.value / 100)
+            log.append(f"{colony.name}: Эффект на расходы ({self.value}%) снят.")
+        elif self.effect_type == 'balance':
+            colony.balance -= colony.balance * (self.value / 100)
+            log.append(f"{colony.name}: Эффект на баланс ({self.value}%) снят.")
+
 
 
 class Colony:
@@ -22,12 +55,11 @@ class Colony:
         self.income = income
         self.expenses = expenses
         self.experience = 0
-        self.artifact = None
+        self.effects = []  # Новый список для активных эффектов
         self.alive = True
-        self.is_winner = False  # Новый флаг для победителей
-        self.rounds_played = 0  # Количество раундов участия
-        self.level_up_iteration = None  # Итерация достижения уровня 10
-        self.termination_iteration = None  # Итерация завершения игры
+        self.is_winner = False
+        self.rounds_played = 0
+        self.level_up_iteration = None
 
     def check_level_up(self, log, cycle_number):
         if not self.alive:  # Проверяем, что колония жива
@@ -43,7 +75,6 @@ class Colony:
                 self.is_winner = True
                 self.level_up_iteration = cycle_number  # Фиксируем итерацию достижения 10 уровня
                 log.append(f"{self.name}: Достигнут максимальный уровень и назначена как победитель.")
-                # Победитель исключается из дальнейшего участия
                 self.alive = False
 
     def update_balance(self, log):
@@ -55,21 +86,21 @@ class Colony:
         self.experience += max(0, self.balance - previous_balance) // 100  # Медленное накопление опыта
 
         if self.balance < 0:  # Баланс отрицательный
-            if self.level == MAX_LEVEL and self.is_winner:  # Если это победитель — баланс игнорируется
-                log.append(f"{self.name}: Победитель! Баланс стал отрицательным, но статус не изменён.")
-            else:
-                self.alive = False
-                self.is_winner = False  # Убедимся, что статус победителя не будет установлен
-                self.termination_iteration = self.rounds_played  # Фиксируем итерацию выбытия
-                log.append(f"{self.name}: Баланс отрицателен, колония выбывает!")
-                return
+            self.alive = False
+            log.append(f"{self.name}: Баланс отрицателен, колония выбывает!")
 
-    def apply_artifact(self, log):
-        if self.artifact:
-            self.artifact.apply(self, log)
-            if self.artifact.duration == 0:
-                log.append(f"{self.name}: Артефакт перестал действовать.")
-                self.artifact = None
+    def apply_effects(self, log):
+        """Применить все активные эффекты к колонии"""
+        for effect in self.effects:
+            effect.apply(self, log)
+            effect.duration -= 1
+
+        # Удаляем эффекты с завершённым сроком действия
+        expired_effects = [e for e in self.effects if e.duration <= 0]
+        for effect in expired_effects:
+            effect.rollback(self, log)
+            log.append(f"{self.name}: Эффект '{effect.name}' истёк.")
+            self.effects.remove(effect)
 
     def __str__(self):
         status = "Победитель" if self.is_winner else ("Выбыла" if not self.alive else "Активна")
@@ -77,16 +108,16 @@ class Colony:
 
 
 class Artifact:
-    def __init__(self, effect, duration, name):
-        self.effect = effect
-        self.duration = duration
+    def __init__(self, name, effects):
         self.name = name
+        self.effects = effects
 
-    def apply(self, colony, log):
-        if self.duration > 0:
-            self.effect(colony, log)
-            self.duration -= 1
-            log.append(f"Артефакт '{self.name}' применён к {colony.name}. Осталось итераций: {self.duration}.")
+    def apply_artifact(self, colony, log):
+        """Применение артефакта добавляет его эффекты в список"""
+        for effect in self.effects:
+            colony.effects.append(effect)
+        log.append(f"{colony.name}: Артефакт '{self.name}' применён.")
+
 
 
 # Примеры эффектов артефактов
@@ -108,8 +139,11 @@ def boost_balance(colony, log, percent=20):
 
 def max_level_artifact(colony, log):
     colony.level = MAX_LEVEL
-    colony.alive = False
-    log.append(f"{colony.name}: Артефакт установил максимальный уровень! Колония завершила игру.")
+    colony.is_winner = True  # Устанавливаем статус победителя
+    colony.level_up_iteration = colony.rounds_played  # Фиксируем раунды до достижения 10 уровня
+    colony.alive = False  # Колония завершает участие
+    log.append(f"{colony.name}: Артефакт установил максимальный уровень! Колония завершила игру и стала победителем.")
+
 
 
 # Примеры событий среды
@@ -129,48 +163,55 @@ def renaissance(colony, log, income_increase=20, expense_reduction=10):
 
 
 # Функции симуляции
-def run_cycle(colonies, cycle_number, log):
+def run_cycle(active_colonies, winners, losers, cycle_number, log):
     log.append(f"\nЦикл {cycle_number}: Начало.")
-    for colony in colonies:
+
+    for colony in active_colonies[:]:
         colony.rounds_played += 1
+        colony.apply_effects(log)  # Применяем все активные эффекты
         colony.update_balance(log)
         colony.check_level_up(log, cycle_number)
-        colony.apply_artifact(log)
+
+        if not colony.alive:
+            if colony.is_winner:
+                winners.append(colony)
+            else:
+                losers.append(colony)
+            active_colonies.remove(colony)
 
     if cycle_number % EVENT_INTERVAL == 0:
         event = random.choice([dust_storm, renaissance])
         log.append("\nСобытие среды:")
-        for colony in colonies:
-            if colony.alive:
-                event(colony, log)
+        for colony in active_colonies:
+            event(colony, log)
 
     if cycle_number % AUCTION_INTERVAL == 0:
-        run_auction(colonies, log)
+        run_auction(active_colonies, log)
+
+artifact_pool = [
+    Artifact("Увеличение дохода", [Effect('income', 10, 3, "Увеличение дохода на 10%")]),
+    Artifact("Снижение расходов", [Effect('expenses', 15, 3, "Снижение расходов на 15%")]),
+    Artifact("Увеличение баланса", [Effect('balance', 20, 3, "Увеличение баланса на 20%")]),
+    Artifact("Максимальный уровень", [Effect('balance', 0, 1, "Максимальный уровень")]),
+]
 
 
-def run_auction(colonies, log):
+def run_auction(active_colonies, log):
     log.append("\nАукцион начинается.")
-    active_colonies = [c for c in colonies if c.alive and not c.artifact]
-    if not active_colonies:
+    active_bidders = [c for c in active_colonies if c.balance > 50]
+    if not active_bidders:
         log.append("Нет доступных колоний для участия в аукционе.")
         return
 
-    artifact_pool = [
-        Artifact(lambda c, l: increase_income(c, l, 10), 3, "Увеличение дохода на 10%"),
-        Artifact(lambda c, l: decrease_expenses(c, l, 15), 3, "Снижение расходов на 15%"),
-        Artifact(lambda c, l: boost_balance(c, l, 20), 1, "Увеличение баланса на 20%"),
-        Artifact(max_level_artifact, 1, "Установить максимальный уровень")
-    ]
-
     for artifact in artifact_pool:
-        bidders = [c for c in active_colonies if c.balance > 50]
-        if not bidders:
+        if not active_bidders:
             break
+        winner = random.choice(active_bidders)
+        artifact.apply_artifact(winner, log)  # Используем метод Artifact для применения
+        active_bidders.remove(winner)
 
-        winner = random.choice(bidders)
-        winner.artifact = artifact
-        active_colonies.remove(winner)  # Исключаем из повторной покупки
         log.append(f"{winner.name} приобрела артефакт: {artifact.name}.")
+
 
 
 # Инициализация колоний
@@ -181,22 +222,24 @@ colonies = [
 
 # Запуск симуляции
 log = []
+active_colonies = colonies[:]
+winners = []
+losers = []
 survival_data = []
-for cycle in range(1, SIMULATION_TIME + 1):
-    run_cycle(colonies, cycle, log)
 
-    # Проверка завершения симуляции, если все колонии достигли уровня 10 или выбыли
-    if all(c.level == MAX_LEVEL or not c.alive for c in colonies):
+for cycle in range(1, SIMULATION_TIME + 1):
+    if not active_colonies:  # Если активных колоний больше нет, завершить симуляцию
         break
 
-    # Сбор данных для графика
-    survival_data.append(sum(1 for c in colonies if c.alive))
+    run_cycle(active_colonies, winners, losers, cycle, log)
+    survival_data.append(len(active_colonies))
 
 # Сохранение лога в файл
 with open(LOG_FILE, "w", encoding="utf-8") as f:
     f.write("\n".join(log))
 
 # Построение графиков
+
 levels = [c.level for c in colonies]
 balances = [c.balance for c in colonies]
 
@@ -220,19 +263,18 @@ plt.legend()
 plt.show()
 
 # Сбор итоговой таблицы
-# Сбор итоговой таблицы
 colony_info = [
     {
         "Название": c.name,
         "Уровень": c.level,
         "Баланс": c.balance,
-        "Статус": "Победитель" if c.is_winner else ("Выбыла" if not c.alive else "Активна"),
+        "Статус": "Победитель" if c in winners else ("Выбыла" if c in losers else "Активна"),
         "Раунды сыграно": c.rounds_played,
         "Итерация достижения максимального уровня": c.level_up_iteration if c.is_winner else "Не достиг",
-        "Причина выбытия": "Баланс отрицателен" if not c.alive else "Не выбыла",
-        "Итерация завершения": cycle if not c.alive else "Не завершена"
+        "Причина выбытия": "Баланс отрицателен" if c in losers else "Не выбыла",
     } for c in colonies
 ]
+
 
 pd.set_option('display.max_rows', None)  # Показывать все строки
 pd.set_option('display.max_columns', None)  # Показывать все столбцы
