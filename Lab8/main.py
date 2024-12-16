@@ -1,17 +1,7 @@
 import random
-import matplotlib.pyplot as plt
 import pandas as pd
-
-# Константы и начальные настройки
-MAX_LEVEL = 10
-INITIAL_BALANCE = 100  # Уменьшен для восприятия
-EXPERIENCE_THRESHOLD = 5000  # Уменьшен для более быстрого роста уровней
-COLONY_COUNT = 10
-SIMULATION_TIME = 1000
-ITERATIONS_PER_CYCLE = 10
-AUCTION_INTERVAL = 5
-EVENT_INTERVAL = 7
-LOG_FILE = "simulation_log.txt"
+from Graphics import Graphics
+from const import *
 
 class Effect:
     def __init__(self, effect_type, value, duration, name):
@@ -83,7 +73,8 @@ class Colony:
 
         previous_balance = self.balance
         self.balance += self.income - self.expenses
-        self.experience += max(0, self.balance - previous_balance) // 100  # Медленное накопление опыта
+        self.experience += max(0, self.balance - previous_balance) // 100
+        self.experience += self.income // 10
 
         if self.balance < 0:  # Баланс отрицательный
             self.alive = False
@@ -207,10 +198,11 @@ def run_auction(active_colonies, log):
         if not active_bidders:
             break
         winner = random.choice(active_bidders)
+        log.append(f"{winner.name} приобрела артефакт: {artifact.name}.")
         artifact.apply_artifact(winner, log)  # Используем метод Artifact для применения
         active_bidders.remove(winner)
 
-        log.append(f"{winner.name} приобрела артефакт: {artifact.name}.")
+
 
 
 
@@ -242,25 +234,10 @@ with open(LOG_FILE, "w", encoding="utf-8") as f:
 
 levels = [c.level for c in colonies]
 balances = [c.balance for c in colonies]
+graphics = Graphics(levels,balances,survival_data)
 
-plt.hist(levels, bins=range(1, MAX_LEVEL + 2), alpha=0.7, label="Уровни")
-plt.title("Распределение уровней колоний")
-plt.xlabel("Уровень")
-plt.ylabel("Количество")
-plt.show()
 
-plt.hist(balances, bins=20, alpha=0.7, label="Балансы")
-plt.title("Распределение балансов колоний")
-plt.xlabel("Баланс")
-plt.ylabel("Количество")
-plt.show()
 
-plt.plot(survival_data, label="Выживание колоний")
-plt.title("График выживаемости колоний")
-plt.xlabel("Цикл")
-plt.ylabel("Количество выживших")
-plt.legend()
-plt.show()
 
 # Сбор итоговой таблицы
 colony_info = [
