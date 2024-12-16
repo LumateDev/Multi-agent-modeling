@@ -9,14 +9,14 @@ class Colony:
         self.income = income
         self.expenses = expenses
         self.experience = 0
-        self.effects = []  # Новый список для активных эффектов
+        self.effects = []
         self.alive = True
         self.is_winner = False
         self.rounds_played = 0
         self.level_up_iteration = None
 
     def check_level_up(self, log, cycle_number):
-        if not self.alive:  # Если колония уже выбыла, не выполняем дальнейшую логику
+        if not self.alive:
             return
 
         # Проверяем, достигла ли колония уровня 10
@@ -26,14 +26,14 @@ class Colony:
             log.append(f"{self.name}: Повышение уровня! Новый уровень: {self.level}.")
 
         if self.level == MAX_LEVEL:  # Если достигнут максимальный уровень
-            self.is_winner = True  # Помечаем как победителя
-            self.level_up_iteration = cycle_number  # Фиксируем итерацию достижения 10 уровня
+            self.is_winner = True
+            self.level_up_iteration = cycle_number
             log.append(f"{self.name}: Достигнут максимальный уровень и назначена как победитель.")
-            self.alive = False  # Колония больше не участвует в игре, она победила
-            return  # Завершаем функцию, так как колония больше не будет участвовать в цикле
+            self.alive = False
+            return
 
     def update_balance(self, log):
-        if not self.alive:  # Если колония уже выбыла или победила, ничего не делаем
+        if not self.alive:
             return
 
         previous_balance = self.balance
@@ -41,7 +41,7 @@ class Colony:
         self.experience += max(0, self.balance - previous_balance) // 100
         self.experience += self.income // 10
 
-        if self.balance < 0:  # Баланс отрицательный
+        if self.balance < 0:
             self.alive = False
             log.append(f"{self.name}: Баланс отрицателен, колония выбывает!")
 

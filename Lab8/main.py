@@ -13,9 +13,9 @@ def run_cycle(active_colonies, winners, losers, cycle_number, log):
     log.append(f"\nЦикл {cycle_number}: Начало.")
 
     for colony in active_colonies[:]:
-        if colony.is_winner:  # Если колония победила, пропускаем её обновление
-            winners.append(colony)  # Добавляем победителей в список
-            active_colonies.remove(colony)  # Убираем победителя из активных колоний
+        if colony.is_winner:
+            winners.append(colony)
+            active_colonies.remove(colony)
             continue
 
         colony.rounds_played += 1
@@ -77,7 +77,7 @@ def run_auction(active_colonies, log, auction_data):
         # Каждая колония делает ставку в зависимости от своего баланса
         bids = {}
         for colony in active_bidders:
-            max_bid = int(colony.balance * MAX_BET)  # Ограничиваем ставку половиной баланса или 100
+            max_bid = int(colony.balance * MAX_BET)  # Ограничиваем ставку
             bid = random.randint(1, max_bid)
             bids[colony] = bid
             log.append(f"{colony.name} предложила {bid} единиц.")
@@ -129,7 +129,7 @@ auction_data = []
 previous_total_level = sum(colony.level for colony in colonies)  # Для расчёта роста уровней
 
 for cycle in range(1, SIMULATION_TIME + 1):
-    if not active_colonies:  # Если активных колоний больше нет, завершить симуляцию
+    if not active_colonies:
         break
 
     run_cycle(active_colonies, winners, losers, cycle, log)

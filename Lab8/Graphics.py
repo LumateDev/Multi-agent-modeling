@@ -92,7 +92,6 @@ class Graphics:
         plt.ylabel("Вероятность")
         plt.show()
 
-
     def plot_level_distribution(self):
         """Гистограмма распределения уровней колоний."""
         plt.hist(self.levels, bins=range(1, self.max_level + 2), alpha=0.7, color="blue")
@@ -160,7 +159,6 @@ class Graphics:
         plt.ylabel("Баланс")
         plt.legend()
         plt.show()
-
 
     def plot_survival_and_levels(self, level_progression):
         """Сводный график выживаемости и роста максимального уровня."""
