@@ -1,5 +1,6 @@
 from const import EXPERIENCE_THRESHOLD, MAX_LEVEL
 
+
 class Colony:
     def __init__(self, name, balance, income, expenses):
         self.name = name
@@ -35,11 +36,9 @@ class Colony:
         if not self.alive:  # Если колония уже выбыла или победила, ничего не делаем
             return
 
-
-
         previous_balance = self.balance
         self.balance += self.income - self.expenses
-        self.experience += max(0, self.balance - previous_balance) // 90
+        self.experience += max(0, self.balance - previous_balance) // 100
         self.experience += self.income // 10
 
         if self.balance < 0:  # Баланс отрицательный

@@ -5,7 +5,8 @@ from const import *
 from Effect import Effect
 from Colony import Colony
 from Artifact import Artifact
-from Environment import dust_storm,renaissance
+from Environment import dust_storm, renaissance
+
 
 # Функции симуляции
 def run_cycle(active_colonies, winners, losers, cycle_number, log):
@@ -36,8 +37,7 @@ def run_cycle(active_colonies, winners, losers, cycle_number, log):
             event(colony, log)
 
     if cycle_number % AUCTION_INTERVAL == 0:
-        run_auction(active_colonies, log)
-
+        run_auction(active_colonies, log, auction_data)
 
 
 artifact_pool = [
@@ -51,7 +51,7 @@ artifact_pool = [
     Artifact("Увеличение баланса", [Effect('balance', 20, 3, "Увеличение баланса на 20%")]),
 
     # Артефакт 3:
-    Artifact("Максимальный уровень", [Effect('level', MAX_LEVEL, 1, "Максимальный уровень")]),  # Используем новый эффект для установки максимального уровня
+    Artifact("Максимальный уровень", [Effect('level', MAX_LEVEL, 1, "Максимальный уровень")]),
 
     # Артефакт 4:
     Artifact("Текущий расход - {n}", [
@@ -61,7 +61,7 @@ artifact_pool = [
 ]
 
 
-def run_auction(active_colonies, log):
+def run_auction(active_colonies, log, auction_data):
     log.append("\nАукцион начинается.")
     active_bidders = [c for c in active_colonies if c.balance > 50]
     if not active_bidders:
@@ -71,10 +71,39 @@ def run_auction(active_colonies, log):
     for artifact in artifact_pool:
         if not active_bidders:
             break
-        winner = random.choice(active_bidders)
-        log.append(f"{winner.name} приобрела артефакт: {artifact.name}.")
-        artifact.apply_artifact(winner, log)  # Используем метод Artifact для применения
+
+        log.append(f"Лот: {artifact.name} ({len(active_bidders)} участников)")
+
+        # Каждая колония делает ставку в зависимости от своего баланса
+        bids = {}
+        for colony in active_bidders:
+            max_bid = int(colony.balance * MAX_BET)  # Ограничиваем ставку половиной баланса или 100
+            bid = random.randint(1, max_bid)
+            bids[colony] = bid
+            log.append(f"{colony.name} предложила {bid} единиц.")
+
+        # Определяем победителя
+        winner = max(bids, key=bids.get)  # Колония с максимальной ставкой
+        winning_bid = bids[winner]
+
+        # Сохраняем данные о текущем аукционе
+        auction_data.append({
+            "artifact": artifact.name,
+            "winning_bid": winning_bid,
+            "winner_name": winner.name,
+            "winner_level": winner.level,
+            "participants": [c.level for c in active_bidders],
+        })
+
+        # Применяем артефакт и вычитаем ставку из баланса
+        log.append(f"{winner.name} выигрывает лот с ставкой {winning_bid} единиц!")
+        winner.balance -= winning_bid
+        artifact.apply_artifact(winner, log)
+
+        # Убираем победителя из участников аукциона
         active_bidders.remove(winner)
+
+    log.append("Аукцион завершён.")
 
 
 # Инициализация колоний
@@ -96,8 +125,8 @@ balances_by_cycle = []
 victory_levels = []
 defeat_levels = []
 
+auction_data = []
 previous_total_level = sum(colony.level for colony in colonies)  # Для расчёта роста уровней
-
 
 for cycle in range(1, SIMULATION_TIME + 1):
     if not active_colonies:  # Если активных колоний больше нет, завершить симуляцию
@@ -140,19 +169,22 @@ with open(LOG_FILE, "w", encoding="utf-8") as f:
 levels = [c.level for c in colonies]
 balances = [c.balance for c in colonies]
 
-# graphics = Graphics(levels=levels, balances=balances, survival_data=survival_data, max_level=MAX_LEVEL)
-# graphics.plot_level_distribution()
-# graphics.plot_balance_distribution()
-# graphics.plot_survival_curve()
-#
-#
-# # Дополнительные графики с динамически посчитанными данными
-# graphics.plot_average_survival_by_level()
-# graphics.plot_max_level_progression(level_progression)
-# graphics.plot_level_growth_distribution(levels_growth)
-# graphics.plot_balance_change(balances_by_cycle)
-# graphics.plot_victory_defeat_distribution(victory_levels, defeat_levels)
-# graphics.plot_survival_and_levels(level_progression)
+graphics = Graphics(levels=levels, balances=balances, survival_data=survival_data, max_level=MAX_LEVEL, auction_data=auction_data, colonies=colonies)
+graphics.plot_level_distribution()
+graphics.plot_balance_distribution()
+graphics.plot_survival_curve()
+
+# Дополнительные графики с динамически посчитанными данными
+graphics.plot_average_survival_by_level()
+graphics.plot_max_level_progression(level_progression)
+graphics.plot_level_growth_distribution(levels_growth)
+graphics.plot_balance_change(balances_by_cycle)
+
+graphics.plot_survival_and_levels(level_progression)
+graphics.plot_average_balance_by_level()
+graphics.plot_auction_winning_bids()
+graphics.plot_survival_vs_defeat_ratio()
+graphics.plot_auction_win_probability_by_level()
 
 
 # Сбор итоговой таблицы
@@ -167,7 +199,6 @@ colony_info = [
         "Причина выбытия": "Баланс отрицателен" if c in losers else "Не выбыла",
     } for c in colonies
 ]
-
 
 pd.set_option('display.max_rows', None)  # Показывать все строки
 pd.set_option('display.max_columns', None)  # Показывать все столбцы
